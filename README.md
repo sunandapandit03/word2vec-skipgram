@@ -1,181 +1,83 @@
-# Bridge Failure Prediction — Your ML Part
-==========================================
+Word2Vec — Skip-gram Implementation
 
-## Your 5 files and what each one does
+Paper: Efficient Estimation of Word Representations in Vector Space — Mikolov et al., 2013
 
-| File | Your job | One-line summary |
-|---|---|---|
-| `model.py` | Define the AI brain | EfficientNet-B3 CNN with 4 output heads |
-| `dataset.py` | Load training data | Reads MySQL → preprocesses images |
-| `train.py` | Train the model | Teaches the CNN from your bridge images |
-| `api.py` | Serve predictions | FastAPI server that Node backend calls |
-| `Dockerfile` | Package everything | Runs identically on any machine |
 
----
+Setup
 
-## Step 1 — Set up your project folder
+bashpip3 install torch numpy tqdm requests
 
-Your folder should look like this:
-```
-your-project/
-├── model.py
-├── dataset.py
-├── train.py
-├── api.py
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── backend.js              ← backend person's file
-├── package.json            ← backend person's file
-├── bridge_db_bridge_images.sql  ← from repo
-├── .env                    ← you create this (see Step 2)
-└── archive/                ← your Kaggle dataset goes here
-    ├── deck/
-    │   ├── Cracked/
-    │   └── Non-Cracked/
-    ├── pavement/
-    │   ├── Cracked/
-    │   └── Non-Cracked/
-    └── wall/
-        ├── Cracked/
-        └── Non-Cracked/
-```
 
----
+How to run
 
-## Step 2 — Create your .env file
+Step 1 — Train:
 
-Create a file named exactly `.env` in your project folder:
-```
-DB_PASSWORD=your_mysql_password_here
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-```
+bashcd src
+python3 train.py
 
-Get your Anthropic API key from: https://console.anthropic.com
+This will:
 
-NEVER commit this file to GitHub. Add `.env` to your `.gitignore`.
 
----
+Download the text8 dataset (~100MB, one time only)
+Build vocabulary (top 20k most frequent words)
+Train Skip-gram with negative sampling for 3 epochs
+Save embeddings.pt checkpoint
 
-## Step 3 — Download the dataset
 
-1. Go to: https://www.kaggle.com/datasets/arnavr10880/concrete-crack-images-for-classification
-2. Download and extract
-3. Place the images into the `archive/` folder structure shown above
+Expected training time: ~4-5 hrs on CPU (5M tokens, 3 epochs)
 
----
+Step 2 — Evaluate:
 
-## Step 4 — Install Docker
+bashpython3 evaluate.py --embeddings embeddings.pt --analogies ../questions-words.txt --check-words king paris dog
 
-Download Docker Desktop: https://www.docker.com/products/docker-desktop/
-Works on Windows, Mac, Linux.
+This will:
 
----
 
-## Step 5 — Train the model (first time only)
+Print nearest neighbors for king, paris, dog (sanity check)
+Run full analogy benchmark (~19.5k questions)
+Report semantic and syntactic accuracy
 
-```bash
-# This builds your container and runs training
-docker-compose run ml_api python train.py
-```
 
-What you'll see:
-```
-Training on: cpu (or cuda if you have a GPU)
-Loaded 40,000 records from MySQL.
-Train: 32,000 images | Val: 8,000 images
-Model ready. Total params: 12,345,678 | Trainable: 2,345,678
-Epoch 01/20 | Train loss: 1.2345  crack_acc: 72.3%  | Val loss: 0.9876  crack_acc: 81.2%
-...
-Epoch 10/20 | Train loss: 0.3456  crack_acc: 91.5%  | Val loss: 0.2987  crack_acc: 93.1%
-Entering Phase 2 — unfreezing backbone for fine-tuning
-...
-Epoch 20/20 | Train loss: 0.1234  crack_acc: 96.2%  | Val loss: 0.1456  crack_acc: 95.8%
-Training complete. Best model saved to: checkpoints/bridge_model.pt
-```
 
-The trained model is saved to `checkpoints/bridge_model.pt` on your laptop.
+Actual results
 
----
+SettingSemantic %Syntactic %Total %Paper (783M words, 300d, 3 epochs)50.055.953.3Ours (5M words, 100d, 3 epochs, CPU)2.20.20.7
 
-## Step 6 — Start everything
+Why lower than paper:
 
-```bash
-docker-compose up --build
-```
 
-This starts:
-- MySQL on port 3306
-- Your ML API on port 8000
-- Node backend on port 3000
+Paper trained on 783M words; we used 5M (~157x less data)
+Paper used 300-dim embeddings; we used 100-dim
+9460 out of 19544 questions skipped due to OOV words (small vocab = many words missing)
+Qualitative results are meaningful despite low accuracy:
 
----
+king → queen, cleopatra, darius ✓
+paris → zurich, munich, vienna, geneva ✓ (all European cities)
+dog → cat, tiger, monkey ✓ (all animals)
 
-## Step 7 — Test your ML API directly
 
-Open your browser: http://localhost:8000/docs
 
-This shows the interactive API documentation where you can upload a test image
-and see the full JSON response.
+Gap is entirely explained by compute constraints, not implementation error
 
-Or from the terminal:
-```bash
-curl -X POST http://localhost:8000/predict \
-  -F "file=@path/to/bridge_image.jpg"
-```
 
----
 
-## What the JSON response looks like
+File structure
 
-```json
-{
-  "damage_detected": true,
-  "damage_confidence": 0.9231,
-  "structure_type": "deck",
-  "severity_score": 38.2,
-  "days_to_failure": 87,
-  "risk_level": "high",
-  "class_probabilities": {
-    "non-cracked": 0.0769,
-    "cracked": 0.9231
-  },
-  "report": {
-    "what": "Significant flexural cracking was detected on the bridge deck...",
-    "why": "The cracking pattern suggests repeated load cycling combined with...",
-    "when": "At the current deterioration rate, critical intervention is needed within 87 days...",
-    "next_steps": [
-      "Schedule emergency inspection by a certified structural engineer",
-      "Apply epoxy injection to seal active cracks immediately",
-      "Install strain gauges for real-time structural monitoring",
-      "Review load limits and restrict heavy vehicle access"
-    ]
-  }
-}
-```
+your-repo/
+├── PAPER_NOTES.md           # reading notes — claim, method, metrics
+├── README.md                # this file
+├── questions-words.txt      # official Word2Vec analogy benchmark (~19.5k questions)
+├── src/
+│   ├── train.py             # Skip-gram training with negative sampling
+│   └── evaluate.py          # analogy evaluation
+└── results/                 # screenshots of training output and evaluation results
 
----
 
-## Coordination with your backend person
+Key design decisions
 
-She needs two things from you:
-1. The ML API URL: `http://ml_api:8000` (inside Docker) or `http://localhost:8000` (local testing)
-2. The field name for the image: `"file"` (in her `form.append('file', ...)` call)
 
-The JSON fields her backend saves to MySQL:
-- `crack_detected` → `damage_detected`
-- `severity` → `severity_score`
-- `risk_level` → `risk_level`
-- `report` → the full report object (she can stringify it or store sections separately)
-
----
-
-## If you don't have a GPU (training is slow)
-
-Use Google Colab (free):
-1. Upload your files to Google Drive
-2. Open Colab, mount your Drive
-3. Run train.py — Colab gives you a free GPU
-4. Download the trained `bridge_model.pt`
-5. Put it in your `checkpoints/` folder
-6. Run the API server on your laptop
+Negative Sampling instead of hierarchical softmax — simpler to implement, works well in practice. Paper hints at this; formalized in the follow-up NIPS 2013 paper.
+Two embedding matrices — separate in_embed (center words) and out_embed (context/negative words). Both initialized with small uniform random values.
+Adam optimizer (lr=0.001) — more stable than SGD with linear decay for small datasets on CPU.
+Random window size — window sampled from [1, C] each time, as described in the paper. Closer words are seen more often.
+Unigram^0.75 for negatives — frequent words sampled more but not proportionally (as in the paper). Reduces dominance of very common words like "the".
