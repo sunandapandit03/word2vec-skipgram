@@ -1,0 +1,7 @@
+text8
+text8.zip
+src/embeddings.pt
+src/text8
+src/text8.zip
+__pycache__/
+*.pyc
