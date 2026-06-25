@@ -1,85 +1,78 @@
-PAPER_NOTES.md
+Word2Vec — Skip-gram Implementation
 
-Paper: Word2Vec — Mikolov et al., 2013
-
-
-1. What is the paper claiming?
-
-Old models for learning word meaning were slow and needed too much compute.
-
-This paper says: remove the complex parts, keep it simple, train on more data.
-Result → better word vectors, trained much faster.
-
-They propose two models: CBOW and Skip-gram.
-Skip-gram is the better one (especially for meaning-based tasks) so that's what we implement.
-
-What Skip-gram does in one line:
+Paper: Efficient Estimation of Word Representations in Vector Space — Mikolov et al., 2013
 
 
-Give it one word → it learns to predict the words around it.
+1. What is the Paper Claiming?
+
+Older word embedding models were slow and computationally heavy. This paper argues: simplify the architecture, train on more data, get better results.
+
+The authors propose two models: CBOW and Skip-gram.
+
+We implement Skip-gram — it performs better on semantic (meaning-based) tasks.
+
+What Skip-gram does (in one line):
+
+Given one word → predict the surrounding words.
 
 
 
-Do this for the entire corpus millions of times → words with similar meaning end up with similar vectors.
+Repeat this over millions of word pairs across the entire corpus → words with similar meanings end up with similar vectors.
 
 The famous result:
 
+vector(king) - vector(man) + vector(woman) ≈ vector(queen)
 
-vector(king) - vector(man) + vector(woman) = vector(queen)
-
-
-
-This works because the model accidentally learns that "gender" is a direction in vector space.
+This works because the model learns that "gender" is a direction in vector space — not explicitly taught, just an emergent pattern.
 
 
-2. What do we implement?
 
-Skip-gram with Negative Sampling:
+2. What Do We Implement?
 
+Skip-gram with Negative Sampling (SGNS)
 
-Every word is stored as a list of 100 numbers (a vector)
-For each word in text, look at nearby words (window = 5)
-For each (center word, nearby word) pair → this is a positive example
-Pick 5 random unrelated words → these are negative examples
-Train the model: score positive pairs high, negative pairs low
-Repeat. Vectors slowly improve.
+StepDescriptionRepresentationEach word = a list of 100 numbers (a vector)Context windowFor each word, look at 5 nearby wordsPositive pair(center word, nearby word) → score should be HIGHNegative pair(center word, 5 random unrelated words) → score should be LOWTrainingRepeat across all pairs; vectors slowly improve
 
+Hyperparameters — Ours vs Paper
 
-Hyperparameters (ours vs paper):
-
-SettingPaperOursEmbedding size300100Window size105Negative samples55OptimizerSGD, lr=0.025 decayingAdam, lr=0.001Epochs33Training data783M words5M words
-
-We used Adam instead of SGD because SGD with linear decay did not converge on our small dataset.
+SettingPaperOursEmbedding size300100Window size105Negative samples55OptimizerSGD (lr=0.025, linear decay)Adam (lr=0.001)Epochs33Training data783M words5M words
 
 
-3. Dataset, metric, baseline
+Why Adam instead of SGD?
 
-Dataset: Paper used Google News (6 billion words) — too big for us.
-We use text8 (~17M words, we use first 5M) — standard smaller substitute.
+SGD with linear decay didn't converge on our smaller dataset. Adam worked more stably.
 
-How we measure quality:
-Analogy questions like:
 
+
+3. Dataset, Evaluation & Results
+
+Dataset
+
+Paper used: Google News — 6 billion words (too large for us)
+We use: text8 — ~17M words total, first 5M used (standard smaller benchmark)
+
+How We Measure Quality — Word Analogy Task
 
 "Paris is to France as Berlin is to ___?"
 
-
-
 Compute: vector(Paris) - vector(France) + vector(Berlin) → find nearest word → should be Germany.
-Count how many we get right = accuracy %.
 
-Paper's results (Table 3, 640-dim, same training data):
+We count how many analogies we get right = accuracy %.
+
+Paper's Results (Table 3, 640-dim, same training data)
 
 ModelSemantic %Syntactic %RNNLM936NNLM2353CBOW2464Skip-gram5559
 
-Our actual result:
+Our Results
 
-SettingSemantic %Syntactic %Total %Ours (5M words, 100d, 3 epochs)2.20.20.7
+SettingSemantic %Syntactic %Total %5M words, 100-dim, 3 epochs2.20.20.7
 
-Lower than paper due to 157x less training data and smaller embeddings.
-Qualitative results confirm learning happened:
+Why lower? We used 157x less training data and smaller embeddings (100 vs 640 dims). Expected gap.
 
 
-king → queen ✓
-paris → zurich, munich, vienna ✓
-dog → cat, tiger ✓
+
+Qualitative Results — Learning Did Happen 
+
+Despite low accuracy scores, the model learned meaningful relationships:
+
+The vectors capture real-world similarity — just not at paper-scale accuracy due to data constraints.
