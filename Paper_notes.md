@@ -43,6 +43,7 @@ Negative pair=(center word, 5 random unrelated words) → score should be LOW
 Training=Repeat across all pairs; vectors slowly improve
 
 
+
 Hyperparameters(Ours vs Paper)->
 
 Embedding size of paper=300
@@ -54,6 +55,7 @@ Negative samples of ours=5
 Epochs=same(3)
 Training data of paper=783M words
 Training data of ours=5M words
+
 
 
 Why Adam instead of SGD?
@@ -87,7 +89,11 @@ ModelSemantic %Syntactic %RNNLM936NNLM2353CBOW2464Skip-gram5559
 
 5. Our Results
 
-SettingSemantic %Syntactic %Total %5M words, 100-dim, 3 epochs2.20.20.7
+Semantic=2.2 %
+
+Syntactic=0.7%
+
+Total=0.7%
 
 Why lower? We used 157x less training data and smaller embeddings (100 vs 640 dims). Expected gap.
 
