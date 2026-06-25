@@ -33,9 +33,13 @@ Skip-gram with Negative Sampling (SGNS)
 
 Representation->
 Each word = a list of 100 numbers (a vector)
+
 Context window=For each word, look at 5 nearby words
+
 Positive pair=(center word, nearby word) → score should be HIGH
+
 Negative pair=(center word, 5 random unrelated words) → score should be LOW
+
 Training=Repeat across all pairs; vectors slowly improve
 
 
